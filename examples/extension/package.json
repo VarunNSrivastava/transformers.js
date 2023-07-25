@@ -15,6 +15,6 @@
     "webpack": "^5.79.0"
   },
   "dependencies": {
-    "@xenova/transformers": "^2.0.0"
+    "@xenova/transformers": "../../dist/transformers.js"
   }
 }
