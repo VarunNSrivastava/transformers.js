@@ -3,7 +3,9 @@
   "name": "extension",
   "description": "Transformers.js | Sample browser extension",
   "version": "0.0.1",
+  "host_permissions": ["http://*/*", "https://*/*"],
   "permissions": [
+    "tabs",
     "activeTab",
     "scripting",
     "contextMenus",
