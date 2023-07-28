@@ -3,27 +3,16 @@ import {CustomCache} from "./cache.js";
 import { pipeline, env } from '@xenova/transformers';
 
 env.useBrowserCache = false;
-//env.useCustomCache = true;
-//env.customCache = new CustomCache('transformers-cache');
-
-// Skip initial check for local models, since we are not loading any local models.
+env.useCustomCache = true;
+env.customCache = new CustomCache('transformers-cache');
 env.allowLocalModels = false;
+
 
 // Due to a bug in onnxruntime-web, we must disable multithreading for now.
 // See https://github.com/microsoft/onnxruntime/issues/14445 for more information.
 env.backends.onnx.wasm.numThreads = 1;
 
 let embeddingsDict = {};
-
-/*
-internal:
-- load model
-- embed
-- cosineSim
-- embeddingdict
-external
-- similarity(text1, text2)
- */
 
 
 class EmbedPipeline {
@@ -80,5 +69,3 @@ function cosineSimilarity(v1, v2) {
     }
     return dotProduct / (Math.sqrt(v1_mag) * Math.sqrt(v2_mag));
 }
-
-

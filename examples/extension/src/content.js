@@ -1,9 +1,10 @@
-// content.js - the content scripts which is run in the context of web pages, and has access
-// to the DOM and other web APIs.
+// content.js
+import { prettyLog } from './utils.js';
 
-
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+chrome.runtime.onMessage.addListener((request, sender) => {
+    // prettyLog("popup sent message to content", document.body.innerText);
     if (request.type === "getText") {
-        sendResponse({text: document.body.innerText});
+        chrome.runtime.sendMessage({type: "responseText", text: document.body.innerText});
     }
 });
+

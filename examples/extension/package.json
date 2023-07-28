@@ -11,10 +11,17 @@
   "license": "MIT",
   "devDependencies": {
     "copy-webpack-plugin": "^11.0.0",
+    "css-loader": "^6.8.1",
     "html-webpack-plugin": "^5.5.1",
+    "style-loader": "^3.3.3",
+    "vue-loader": "^17.2.2",
+    "vue-template-compiler": "^2.7.14",
+    "vueify": "^9.4.1",
     "webpack": "^5.79.0"
   },
   "dependencies": {
-    "@xenova/transformers": "../../dist/transformers.js"
+    "@vue/compiler-sfc": "^3.3.4",
+    "@xenova/transformers": "../../dist/transformers.js",
+    "vue": "^3.3.4"
   }
 }

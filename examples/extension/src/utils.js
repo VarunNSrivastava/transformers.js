@@ -5,25 +5,34 @@ external:
 internal:
 - all helpers
  */
+export function prettyLog(label, message, labelColor = 'blue', messageColor = 'black') {
+    console.log("%c" + label + ": %c" + message,
+        "font-weight: bold; color: " + labelColor + ";",
+        "font-weight: normal; color: " + messageColor + ";");
+}
 
-
-export async function splitText(text, splitType = "Sentence", splitParam= null) {
+export async function splitText(text, splitType = "Words", splitParam= 8) {
+    let chunks;
     switch(splitType) {
         case 'Regex':
-            return splitByRegex(text, splitParam);
+            chunks = splitByRegex(text, splitParam);
+            break;
         case 'Sentence':
-            return splitBySentences(text);
+            chunks = splitBySentences(text);
+            break;
         case 'Words':
-            return splitByWords(text, parseInt(splitParam));
+            chunks = splitByWords(text, parseInt(splitParam));
+            break;
         case 'Chars':
-            return splitByChars(text, parseInt(splitParam));
+            chunks = splitByChars(text, parseInt(splitParam));
+            break;
         default:
             console.error('Invalid split type');
             return null;
     }
+    return chunks.filter(chunk => chunk.trim().length > 0);
 }
 
-// lets do a fe
 
 function splitByWords(text, numWords) {
     if (isNaN(numWords) || !Number.isInteger(numWords)) {
@@ -31,27 +40,30 @@ function splitByWords(text, numWords) {
         return null;
     }
 
-    const words = text.split(" ");
     let chunks = [];
-    let currentChunk = [];
+    let lines = text.split("\n");
 
-    for (let i = 0; i < words.length; i++) {
-        currentChunk.push(words[i]);
+    for (let line of lines) {
+        const words = line.split(" ");
+        let currentChunk = [];
 
-        if (currentChunk.length === numWords) {
+        for (let i = 0; i < words.length; i++) {
+            currentChunk.push(words[i]);
+
+            if (currentChunk.length === numWords) {
+                chunks.push(currentChunk.join(' '));
+                currentChunk = [];
+            }
+        }
+
+        if (currentChunk.length > 0) {
             chunks.push(currentChunk.join(' '));
-            currentChunk = [];
         }
     }
 
-    if (currentChunk.length > 0) {
-        chunks.push(currentChunk.join(' '));
-    }
-    chunks = chunks.filter(chunk => chunk.trim().length > 0);
-
-
     return chunks;
 }
+
 
 
 function splitByChars(text, numChars) {
@@ -87,7 +99,7 @@ function splitBySentences(text) {
     let regexExclamationMark = createRegex('!');
     let split_here = "a3Zb5Y6K9q";
 
-    let sentences = text.split(regexPeriod)
+    let chunks = text.split(regexPeriod)
         .join(split_here)
         .split(regexSemicolon)
         .join(split_here)
@@ -96,7 +108,7 @@ function splitBySentences(text) {
         .split(regexExclamationMark)
         .join(split_here)
         .split(split_here);
-    return sentences;
+    return chunks;
 }
 
 
