@@ -1,7 +1,7 @@
 // background.js - Handles requests from the UI, runs the model, then sends back a response
 
 import { CustomCache } from "./cache.js";
-import { splitText, prettyLog } from './utils.js';
+import { prettyLog } from './utils.js';
 import {similarity} from './semantic.js';
 
 
@@ -46,20 +46,20 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 //
 // Listen for messages from the UI, process it, and send the result back.
 
-let bodyText = "";
+let bodyText = [];
 let inputText = "";
 
 let liveProcess = 0;
 
 chrome.runtime.onMessage.addListener(async function(request, sender, sendResponse) {
-    if (request.type === "bodyText") {
-        bodyText = request.text;
+    if (request.type === "tabUpdated") {
+        if (request.text.length > 0) {
+            bodyText = request.text;
+            prettyLog("received " + bodyText.length + " chunks", bodyText);
+        }
     } else if (request.type === "inputText") {
         prettyLog("received query", request.text, "grey");
         inputText = request.text;
-    } else if (request.type === "killProcess") {
-        // prettyLog("requested to kill", request.processId, "blue");
-        // delete runningProcesses[request.processId];
     } else {
         // prettyLog(request.type, "misc request type");
         return;
@@ -67,7 +67,6 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
     if (!bodyText || !inputText) { return; }
 
     liveProcess++;
-    prettyLog("process beginning", liveProcess, "purple");
     const processId = liveProcess;
     // runningProcesses[processId] = true;
     // sendResponse({processId});
@@ -79,66 +78,36 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
 
 
 async function processQuery(query, bodyText, processId) {
+    prettyLog("process " + processId + " beginning", bodyText.length + " items.", "purple");
+
     let results = [];
     const k = 10;
 
-    for (let text of await splitText(bodyText)) {
+    let i = 0;
+    for (let text of bodyText) {
         if (processId !== liveProcess) {
             prettyLog("terminated", processId, "red");
             return;
         } // process killed
+        prettyLog("process " + processId + " processing", text, "yellow");
 
         let sim = await similarity(query, text);
 
-        if (sim > 0.25) {
+        if (sim > 0.15) {
             results.push({sim: sim, text: text});
             results.sort((a, b) => b.sim - a.sim);
             results.length = Math.min(results.length, k);
 
             // Send the results up to the cutoff point
-            chrome.runtime.sendMessage({type: "results", text: results.map(result => result.text)});
+            chrome.runtime.sendMessage({type: "results", progress: 100 * (i / bodyText.length),
+                text: results });
+            chrome.runtime.sendMessage({type: "results", progress: 100 * (i / bodyText.length) });
+            chrome.runtime.sendmessaeg
         }
+        i += 1;
     }
+    chrome.runtime.sendMessage({type: "results", progress: 100 });
     prettyLog("completed", processId, "red");
-}
-
-async function processQuery2(query, bodyText, processId) {
-    // std deviation based cutoff measure
-
-    let results = [];
-    let sum = 0;
-    let sumOfSquares = 0;
-    let count = 0;
-    let cutoff = -1;
-
-    for (let text of await splitText(bodyText)) {
-        if (!runningProcesses[processId]) { return; } // process killed
-
-        let sim = await similarity(query, text);
-
-        sum += sim;
-        sumOfSquares += sim * sim;
-        count += 1;
-
-        let mean = sum / count;
-        let variance = sumOfSquares / count - mean * mean;
-        let stdDev = Math.sqrt(variance);
-
-        if (sim > mean + (2 * stdDev)) {
-            results.push({sim: sim, text: text});
-            results.sort((a, b) => b.sim - a.sim);
-
-            // Adjust the cutoff point if necessary
-            if (cutoff !== -1 && results[cutoff].sim <= mean + (2 * stdDev)) {
-                cutoff--;
-            } else if (cutoff + 1 < results.length && results[cutoff + 1].sim > mean + stdDev) {
-                cutoff++;
-            }
-
-            // Send the results up to the cutoff point
-            chrome.runtime.sendMessage({type: "results", text: results.slice(0, cutoff + 1).map(result => result.text)});
-        }
-    }
 }
 
 //////////////////////////////////////////////////////////////

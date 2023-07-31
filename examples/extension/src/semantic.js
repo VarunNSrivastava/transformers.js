@@ -38,6 +38,11 @@ class EmbedPipeline {
     }
 }
 
+export async function load() {
+    await EmbedPipeline.getInstance();
+    chrome.runtime.sendMessage({type: "download", data: {status: "done"}})
+}
+
 async function embed(text) {
     if (text in embeddingsDict) {
         return embeddingsDict[text];

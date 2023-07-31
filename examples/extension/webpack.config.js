@@ -5,7 +5,9 @@ import { fileURLToPath } from 'url';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import CopyPlugin from 'copy-webpack-plugin';
 import { VueLoaderPlugin } from 'vue-loader';
+import NodePolyfillPlugin from 'node-polyfill-webpack-plugin';
 import webpack from 'webpack';
+import util from 'util';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,6 +18,15 @@ const config = {
         background: './src/background.js',
         popup: './src/popup.js',
         content: './src/content.js',
+    },
+    resolve: {
+        fallback: {
+            "fs": false,
+            "tls": false,
+            "net": false,
+            "path": false,
+            "util": false,
+        }
     },
     output: {
         path: path.resolve(__dirname, 'build'),
@@ -37,6 +48,7 @@ const config = {
         ],
     },
     plugins: [
+        new NodePolyfillPlugin(),
         new webpack.DefinePlugin({
             __VUE_OPTIONS_API__: true,
             __VUE_PROD_DEVTOOLS__: false,

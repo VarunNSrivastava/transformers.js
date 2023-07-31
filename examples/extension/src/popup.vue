@@ -3,19 +3,22 @@
         <input v-model="inputText" type="text" class="search-bar">
         <div class="results-container">
             <ResultItem
-                    v-for="(result, index) in results"
-                    :key="index"
-                    :result="result"
-                    @click="handleResultClick"
+                v-for="(result, index) in results"
+                :key="index"
+                :result="result.text"
+                :score="result.sim"
+                @click="handleResultClick"
             />
+
         </div>
-        <progress id="progress" max="100" :value="progressValue"></progress>
+        <div>model: <progress id="progress" max="100" :value="progressValue"></progress></div>
+        <div>process: <progress id="searchProgress" max="100" :value="searchProgress"></progress></div>
 
     </div>
 </template>
 
 <script>
-import {prettyLog} from './utils.js';
+import {load} from './semantic.js';
 import ResultItem from './result.vue';
 
 export default {
@@ -27,6 +30,7 @@ export default {
             inputText: '',
             results: [],
             progressValue: 0,
+            searchProgress: 0,
             processId: undefined
         };
     },
@@ -40,6 +44,7 @@ export default {
             if (newVal !== oldVal) {
                 this.debounce(this.spawnProcess, ["inputText", this.inputText], 100);
             }
+            if (this.inputText === "") { this.results = [];}
         }
     },
     methods: {
@@ -51,29 +56,25 @@ export default {
             }, wait);
         },
         async spawnProcess(type, text) {
-            // if (this.processId !== undefined) {
-            //     chrome.runtime.sendMessage({type: "killProcess", processId: this.processId});
-            // }
-            // console.log("told to spawn;");
-            chrome.runtime.sendMessage({type: type, text: text});
-            // console.log("finished spawning");
+            await chrome.runtime.sendMessage({type: type, text: text}); // await?
         },
         async handleMessage(request, sender, sendResponse) {
             switch (request.type) {
-                case "responseText":
-                    await this.spawnProcess("bodyText", request.text);
-                    break;
                 case "results":
-                    this.results = request.text;
+                    // console.log("results msg");
+                    if ('text' in request) {
+                        this.results = request.text;
+                    }
+                    this.searchProgress = request.progress;
                     break;
                 case "download":
-                    // prettyLog('Debug', 'Received download message: ' + JSON.stringify(request));
                     if (request.data.status === 'progress') {
                         this.progressValue = request.data.progress.toFixed(2);
                     } else if (request.data.status === 'done') {
                         this.progressValue = 100;
                     }
                     break;
+
             }
         },
         handleResultClick(result) {
@@ -81,14 +82,14 @@ export default {
             // Handle the result click here
         },
     },
+    // when popup is opened
     async mounted() {
-        // Query the active tab and send a message to it
-        const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
-        // prettyLog('Sending getText message to active tab', tab.url, "green");
-        await chrome.tabs.sendMessage(tab.id, {type: "getText"});
-
-        // Listen for messages from the content or background scripts
         chrome.runtime.onMessage.addListener(this.handleMessage);
+
+        const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+        await chrome.tabs.sendMessage(tab.id, {type: "getText"});
+        await load();
+
     },
     beforeUnmount() {
         chrome.runtime.sendMessage({type: "killProcess", processId: this.processId});
