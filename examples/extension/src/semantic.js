@@ -32,7 +32,7 @@ class EmbedPipeline {
                 }
             );
         }
-        // send message to send progrss bar to full
+        chrome.runtime.sendMessage({type: "download", data: {status: "done"}})
 
         return this.instance;
     }
@@ -40,7 +40,6 @@ class EmbedPipeline {
 
 export async function load() {
     await EmbedPipeline.getInstance();
-    chrome.runtime.sendMessage({type: "download", data: {status: "done"}})
 }
 
 async function embed(text) {

@@ -7,7 +7,7 @@
                 :key="index"
                 :result="result.text"
                 :score="result.sim"
-                @click="handleResultClick"
+                @click="handleResultClick(result)"
             />
 
         </div>
@@ -78,8 +78,9 @@ export default {
             }
         },
         handleResultClick(result) {
-            console.log('Result clicked:', result);
-            // Handle the result click here
+            chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+                chrome.tabs.sendMessage(tabs[0].id, {type: 'highlightAndScroll', text: result.text});
+            });
         },
     },
     // when popup is opened
