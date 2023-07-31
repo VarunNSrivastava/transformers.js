@@ -1,19 +1,59 @@
-const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const CopyPlugin = require("copy-webpack-plugin");
+// webpack.config.js
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-module.exports = {
+import HtmlWebpackPlugin from 'html-webpack-plugin';
+import CopyPlugin from 'copy-webpack-plugin';
+import { VueLoaderPlugin } from 'vue-loader';
+import NodePolyfillPlugin from 'node-polyfill-webpack-plugin';
+import webpack from 'webpack';
+import util from 'util';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const config = {
     mode: 'development',
     devtool: 'inline-source-map',
     entry: {
         background: './src/background.js',
         popup: './src/popup.js',
+        content: './src/content.js',
+    },
+    resolve: {
+        fallback: {
+            "fs": false,
+            "tls": false,
+            "net": false,
+            "path": false,
+            "util": false,
+        }
     },
     output: {
         path: path.resolve(__dirname, 'build'),
         filename: '[name].js',
     },
+    module: {
+        rules: [
+            {
+                test: /\.vue$/,
+                use: 'vue-loader'
+            },
+            {
+                test: /\.css$/,
+                use: [
+                    'style-loader',
+                    'css-loader',
+                ],
+            },
+        ],
+    },
     plugins: [
+        new NodePolyfillPlugin(),
+        new webpack.DefinePlugin({
+            __VUE_OPTIONS_API__: true,
+            __VUE_PROD_DEVTOOLS__: false,
+        }),
+        new VueLoaderPlugin(),
         new HtmlWebpackPlugin({
             template: './src/popup.html',
             filename: 'popup.html',
@@ -32,3 +72,5 @@ module.exports = {
         })
     ],
 };
+
+export default config;

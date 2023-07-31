@@ -1,44 +1,114 @@
-// background.js - Handles requests from the frontend, runs the model, then sends back a response
-// TODO - make persistent (i.e., do not close after inactivity)
+// background.js - Handles requests from the UI, runs the model, then sends back a response
 
-if (typeof ServiceWorkerGlobalScope !== 'undefined' && self instanceof ServiceWorkerGlobalScope) {
-    // Load the library
-    const { pipeline, env } = require('@xenova/transformers');
+import { CustomCache } from "./cache.js";
+import { prettyLog } from './utils.js';
+import {similarity} from './semantic.js';
 
-    // Set environment variables to only use local models.
-    env.useBrowserCache = false;
-    env.remoteModels = false;
-    env.localModelPath = chrome.runtime.getURL('models/')
-    env.backends.onnx.wasm.wasmPaths = chrome.runtime.getURL('wasm/')
-    env.backends.onnx.wasm.numThreads = 1;
 
-    // TODO: Replace this with your own task and model
-    const task = 'text-classification';
-    const model = 'distilbert-base-uncased-finetuned-sst-2-english';
+////////////////////// 1. Context Menus //////////////////////
+//
+// Add a listener to create the initial context menu items,
+// context menu items only need to be created at runtime.onInstalled
+chrome.runtime.onInstalled.addListener(function () {
+    // Register a context menu item that will only show up for selection text.
+    chrome.contextMenus.create({
+        id: 'classify-selection',
+        title: 'Classify "%s"',
+        contexts: ['selection'],
+    });
+});
 
-    // Load model, storing the promise that is returned from the pipeline function.
-    // Doing it this way will load the model in the background as soon as the worker is created.
-    // To actually use the model, you must call `await modelPromise` to get the actual classifier.
-    const modelPromise = pipeline(task, model, {
-        progress_callback: (data) => {
-            // If you would like to add a progress bar for model loading,
-            // you can send `data` back to the UI.
+// Perform inference when the user clicks a context menu
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+    // Ignore context menu clicks that are not for classifications (or when there is no input)
+    if (info.menuItemId !== 'classify-selection' || !info.selectionText) return;
+
+    // Perform classification on the selected text
+    // let result = await classify(info.selectionText);
+
+    // Do something with the result
+    // chrome.scripting.executeScript(
+
+    //     {
+    //     target: { tabId: tab.id },    // Run in the tab that the user clicked in
+    //     args: [result],               // The arguments to pass to the function
+    //     function: (result) => {       // The function to run
+    //         // NOTE: This function is run in the context of the web page, meaning that `document` is available.
+    //         console.log('result', result)
+    //         console.log('document', document)
+    //     },
+    // }
+    // );
+});
+//////////////////////////////////////////////////////////////
+
+////////////////////// 2. Message Events /////////////////////
+//
+// Listen for messages from the UI, process it, and send the result back.
+
+let bodyText = [];
+let inputText = "";
+
+let liveProcess = 0;
+
+chrome.runtime.onMessage.addListener(async function(request, sender, sendResponse) {
+    if (request.type === "tabUpdated") {
+        if (request.text.length > 0) {
+            bodyText = request.text;
+            prettyLog("received " + bodyText.length + " chunks", bodyText);
         }
-    });
+    } else if (request.type === "inputText") {
+        prettyLog("received query", request.text, "grey");
+        inputText = request.text;
+    } else {
+        // prettyLog(request.type, "misc request type");
+        return;
+    }
+    if (!bodyText || !inputText) { return; }
+
+    liveProcess++;
+    const processId = liveProcess;
+    // runningProcesses[processId] = true;
+    // sendResponse({processId});
+
+    await processQuery(inputText, bodyText, processId);
+
+    // delete runningProcesses[processId];
+});
 
 
-    // Listen for messages from the UI, process it, and send the result back.
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+async function processQuery(query, bodyText, processId) {
+    prettyLog("process " + processId + " beginning", bodyText.length + " items.", "purple");
 
-        // Run model prediction asynchronously
-        (async function () {
-            let model = await modelPromise;     // 1. Load model if not already loaded
-            let result = await model(message);  // 2. Run model prediction
-            sendResponse(result);               // 3. Send response back to UI
-        })();
+    let results = [];
+    const k = 10;
 
-        // return true to indicate we will send a response asynchronously
-        // see https://stackoverflow.com/a/46628145 for more information
-        return true;
-    });
+    let i = 0;
+    for (let text of bodyText) {
+        if (processId !== liveProcess) {
+            prettyLog("terminated", processId, "red");
+            return;
+        } // process killed
+        prettyLog("process " + processId + " processing", text, "yellow");
+
+        let sim = await similarity(query, text);
+
+        if (sim > 0.15) {
+            results.push({sim: sim, text: text});
+            results.sort((a, b) => b.sim - a.sim);
+            results.length = Math.min(results.length, k);
+
+            // Send the results up to the cutoff point
+            chrome.runtime.sendMessage({type: "results", progress: 100 * (i / bodyText.length),
+                text: results });
+            chrome.runtime.sendMessage({type: "results", progress: 100 * (i / bodyText.length) });
+            chrome.runtime.sendmessaeg
+        }
+        i += 1;
+    }
+    chrome.runtime.sendMessage({type: "results", progress: 100 });
+    prettyLog("completed", processId, "red");
 }
+
+//////////////////////////////////////////////////////////////
+
