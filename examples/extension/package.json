@@ -1,13 +1,13 @@
 {
   "name": "extension",
   "version": "0.0.1",
-  "description": "Transformers.js | Sample browser extension",
+  "description": "Transformers.js | Semantic Search Extension",
   "scripts": {
     "build": "webpack",
     "dev": "webpack --watch"
   },
   "type": "module",
-  "author": "Xenova",
+  "author": "Varun Neal Srivastava",
   "license": "MIT",
   "devDependencies": {
     "copy-webpack-plugin": "^11.0.0",
@@ -22,9 +22,6 @@
   "dependencies": {
     "@vue/compiler-sfc": "^3.3.4",
     "@xenova/transformers": "../../dist/transformers.js",
-    "natural": "^6.5.0",
-    "node-polyfill-webpack-plugin": "^2.0.1",
-    "util": "^0.12.5",
     "vue": "^3.3.4"
   }
 }
